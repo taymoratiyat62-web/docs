@@ -16,6 +16,7 @@ import { prettyPrintResults } from './pretty-print-results'
 import { getLintableYml } from '@/content-linter/lib/helpers/get-lintable-yml'
 import { printAnnotationResults } from '../lib/helpers/print-annotations'
 import languages from '@/languages/lib/languages'
+import { shouldIncludeResult } from '../lib/helpers/should-include-result'
 
 program
   .description('Run GitHub Docs Markdownlint rules.')
@@ -426,11 +427,17 @@ function getFormattedResults(allResults, isPrecommit) {
       if (verbose) {
         output[key] = [...results]
       } else {
-        const formattedResults = results.map((flaw) => formatResult(flaw, isPrecommit))
-        const errors = formattedResults.filter((result) => result.severity === 'error')
-        const warnings = formattedResults.filter((result) => result.severity === 'warning')
-        const sortedResult = [...errors, ...warnings]
-        output[key] = [...sortedResult]
+        const formattedResults = results
+          .map((flaw) => formatResult(flaw, isPrecommit))
+          .filter((flaw) => shouldIncludeResult(flaw, key))
+
+        // Only add the file to output if there are results after filtering
+        if (formattedResults.length > 0) {
+          const errors = formattedResults.filter((result) => result.severity === 'error')
+          const warnings = formattedResults.filter((result) => result.severity === 'warning')
+          const sortedResult = [...errors, ...warnings]
+          output[key] = [...sortedResult]
+        }
       }
     })
   return output
